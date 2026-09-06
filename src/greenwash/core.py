@@ -66,7 +66,15 @@ class Attempt:
         per-job timings would need a request per attempt to the jobs
         endpoint; this is close enough to read, and it is the same number
         the Actions UI shows.
+
+        An attempt that has not completed has no duration at all. GitHub
+        sets ``updated_at`` on a queued run too, equal to its start, so
+        subtracting without checking the status first reports a confident
+        ``0s`` for a run that has not begun. The live CI dogfood caught
+        exactly that on this repository's very first pull request.
         """
+        if self.status != "completed":
+            return None
         if self.started_at is None or self.ended_at is None:
             return None
         return (self.ended_at - self.started_at).total_seconds()

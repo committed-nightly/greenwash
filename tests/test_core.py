@@ -113,6 +113,25 @@ def test_duration_is_none_when_the_run_has_not_finished():
     assert run.latest.duration is None
 
 
+@pytest.mark.parametrize("status", ["queued", "in_progress", "waiting", "pending"])
+def test_a_queued_run_has_no_duration_even_though_github_sets_updated_at(status):
+    """GitHub sets updated_at == run_started_at on a run that has not begun.
+
+    Subtracting them gives a confident 0s for a run that has done nothing.
+    Real payload shape, from this repository's first pull request.
+    """
+    run = build(
+        make_run(
+            status=status,
+            conclusion=None,
+            started="2026-09-06T23:57:33Z",
+            updated="2026-09-06T23:57:33Z",
+        )
+    )
+    assert run.latest.duration is None
+    assert run.verdict == core.RUNNING
+
+
 def test_rates_over_a_mixed_window():
     runs = [
         build(make_run(1)),  # clean pass

@@ -117,4 +117,20 @@ jobs:
           code=0
           greenwash --repo "$GITHUB_REPOSITORY" --json --limit 50 > live.json || code=$?
           test "$code" -ne 2 || { echo "greenwash could not run"; exit 1; }
-          python -c "import json,sys; d=json.load(open('live.json')); assert d['summary']['checked'] >= 1, d"
+          # Not `checked >= 1`: on this repository's first pull request the
+          # only run in existence is this one, still executing, and an
+          # in-progress run is deliberately not counted as checked. What
+          # must hold is that it saw a run and accounted for it somewhere.
+          python - <<'PY'
+          import json
+          d = json.load(open("live.json"))
+          s = d["summary"]
+          assert d["runs"], d
+          assert s["checked"] + s["running"] == len(d["runs"]), s
+          assert s["checked"] + s["running"] >= 1, s
+          for run in d["runs"]:
+              for a in run["attempts"]:
+                  if a["status"] != "completed":
+                      assert a["duration_seconds"] is None, a
+          print(f"live: {s['checked']} checked, {s['running']} running")
+          PY
